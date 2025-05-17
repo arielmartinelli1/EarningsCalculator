@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>Earnings Calculator</title>
+
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Earnings calculator" />
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/846/846449.png" />
+
+  <style>
+    body {
+      margin: 0.5rem;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #121212;
+      color: #f1f1f1;
+      font-size: 14px;
+      line-height: 1.2;
+      min-height: 100vh;
+    }
+    h2 {
+      margin-bottom: 0.7rem;
+      font-weight: 600;
+    }
+    form {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px 20px;
+      max-width: 400px;
+      margin-bottom: 1rem;
+    }
+    label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 1rem;
+    }
+    input[type="number"], input[type="time"], input[type="date"] {
+      background-color: #1e1e1e;
+      color: #f1f1f1;
+      border: 1px solid #333;
+      border-radius: 5px;
+      font-size: 1rem;
+      box-sizing: border-box;
+      padding: 8px;
+      text-align: right;
+      font-family: monospace;
+    }
+    input[type="number"] {
+      width: 6rem; /* ancho fijo para unos 4 dígitos */
+    }
+    input[type="time"] {
+      width: 6.5rem;
+      text-align: center;
+    }
+    input[type="date"] {
+      width: 9rem;
+      text-align: center;
+    }
+    button {
+      grid-column: 1 / -1;
+      padding: 10px 20px;
+      background-color: #00c853;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 1rem;
+      cursor: pointer;
+      width: 100%;
+    }
+    button:hover {
+      background-color: #00b248;
+    }
+    #output {
+      font-size: 1.2rem;
+      background-color: rgba(0, 0, 0, 0.6);
+      padding: 1rem;
+      border-radius: 10px;
+      line-height: 1.3;
+      max-height: none;
+      overflow: visible;
+      word-wrap: break-word;
+      max-width: 400px;
+    }
+    .small-text {
+      font-size: 0.85rem;
+      color: #aaa;
+      margin: 2px 0 0 0;
+    }
+    .footer {
+      margin-top: 1.5rem;
+      font-size: 0.8rem;
+      color: #888;
+      font-style: italic;
+      text-align: center;
+      user-select: none;
+      max-width: 400px;
+    }
+
+    @media (max-width: 430px) {
+      form {
+        max-width: 100%;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px 12px;
+      }
+      #output, .footer {
+        max-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Daily Earnings Calculator</h2>
+
+  <form id="dataForm" onsubmit="event.preventDefault(); startTracking();">
+    <label>Daily earnings ($):
+      <input type="number" id="dailyRate" placeholder="E.g.: 400" min="0" step="0.01" required />
+    </label>
+
+    <label>Tax rate (%):
+      <input type="number" id="taxRate" placeholder="E.g.: 30" min="0" max="100" step="0.1" required />
+    </label>
+
+    <label>Work start time:
+      <input type="time" id="startTime" required />
+    </label>
+
+    <label>Work end time:
+      <input type="time" id="endTime" required />
+    </label>
+
+    <label>Lunch break start (1 hour):
+      <input type="time" id="lunchStart" required />
+    </label>
+
+    <label>First day of swing (optional):
+      <input type="date" id="firstDaySwing" max="" />
+    </label>
+
+    <button type="submit">Start Tracking</button>
+  </form>
+
+  <div id="output">
+    Please enter your data and press "Start Tracking".
+  </div>
+
+  <div class="footer">By: Ariel M.</div>
+
+  <script>
+    const inputs = document.querySelectorAll("input");
+
+    function loadDefaults() {
+      if (!localStorage.getItem("dailyRate")) localStorage.setItem("dailyRate", "");
+      if (!localStorage.getItem("taxRate")) localStorage.setItem("taxRate", "");
+      if (!localStorage.getItem("startTime")) localStorage.setItem("startTime", "06:00");
+      if (!localStorage.getItem("endTime")) localStorage.setItem("endTime", "18:00");
+      if (!localStorage.getItem("lunchStart")) localStorage.setItem("lunchStart", "13:00");
+
+      if (!localStorage.getItem("firstDaySwing")) {
+        const todayISO = new Date().toISOString().slice(0,10);
+        localStorage.setItem("firstDaySwing", todayISO);
+      }
+
+      inputs.forEach(input => {
+        const saved = localStorage.getItem(input.id);
+        if (saved !== null) input.value = saved;
+        input.addEventListener("input", () => {
+          localStorage.setItem(input.id, input.value);
+        });
+      });
+
+      const firstDayInput = document.getElementById("firstDaySwing");
+      const todayISO = new Date().toISOString().slice(0,10);
+      firstDayInput.max = todayISO;
+    }
+    loadDefaults();
+
+    let intervalId;
+
+    function parseTimeToDate(baseDate, timeStr) {
+      const [h, m] = timeStr.split(":").map(Number);
+      const d = new Date(baseDate);
+      d.setHours(h, m, 0, 0);
+      return d;
+    }
+
+    function formatDateDDMMYYYY(date) {
+      const d = date.getDate().toString().padStart(2, '0');
+      const m = (date.getMonth()+1).toString().padStart(2, '0');
+      const y = date.getFullYear();
+      return `${d}/${m}/${y}`;
+    }
+
+    function formatMinutesToHHMM(minutes) {
+      const h = Math.floor(minutes / 60);
+      const m = Math.floor(minutes % 60);
+      return `${h.toString().padStart(2,"0")}:${m.toString().padStart(2,"0")}`;
+    }
+
+    function startTracking() {
+      clearInterval(intervalId);
+
+      const dailyRate = parseFloat(document.getElementById("dailyRate").value);
+      const taxRate = parseFloat(document.getElementById("taxRate").value);
+      const startTimeStr = document.getElementById("startTime").value;
+      const endTimeStr = document.getElementById("endTime").value;
+      let lunchStartStr = document.getElementById("lunchStart").value;
+      let firstDaySwingStr = document.getElementById("firstDaySwing").value;
+
+      if (isNaN(dailyRate) || isNaN(taxRate) || !startTimeStr || !endTimeStr || !lunchStartStr) {
+        document.getElementById("output").innerText = "Please fill all fields correctly.";
+        return;
+      }
+
+      const baseDate = new Date();
+      baseDate.setHours(0,0,0,0);
+
+      let start = parseTimeToDate(baseDate, startTimeStr);
+      let end = parseTimeToDate(baseDate, endTimeStr);
+      if (end <= start) end.setDate(end.getDate() +1);
+
+      let lunchStart = parseTimeToDate(baseDate, lunchStartStr);
+      if (lunchStart < start || lunchStart > end) {
+        lunchStart = new Date(start.getTime() + (end-start)/2 - 30*60000);
+      }
+      let lunchEnd = new Date(lunchStart.getTime() + 60*60000);
+      if (lunchEnd > end) {
+        lunchStart = new Date(end.getTime() - 60*60000);
+        lunchEnd = new Date(end.getTime());
+      }
+
+      const totalWorkMinutes = (end - start - (lunchEnd - lunchStart)) / 60000;
+
+      let firstDaySwing = firstDaySwingStr ? new Date(firstDaySwingStr) : new Date();
+      firstDaySwing.setHours(0,0,0,0);
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      if (firstDaySwing > today) firstDaySwing = today;
+
+      function calculateSwingDays() {
+        const diffMs = today - firstDaySwing;
+        const diffDays = Math.floor(diffMs / (1000*60*60*24)) + 1;
+        return diffDays;
+      }
+
+      intervalId = setInterval(() => {
+        const now = new Date();
+
+        let workedMinutes;
+        if (now < start) {
+          workedMinutes = 0;
+        } else if (now > end) {
+          workedMinutes = totalWorkMinutes;
+        } else {
+          let elapsed = (now - start)/60000;
+          if (now >= lunchStart && now <= lunchEnd) {
+            elapsed -= (now - lunchStart)/60000;
+          } else if (now > lunchEnd) {
+            elapsed -= (lunchEnd - lunchStart)/60000;
+          }
+          workedMinutes = Math.max(0, elapsed);
+        }
+
+        const ratePerMinute = dailyRate / totalWorkMinutes;
+        const net = workedMinutes * ratePerMinute * (1 - taxRate/100);
+
+        // Swing earnings calculation
+        const swingDays = calculateSwingDays();
+        const totalSwingEarnings = net + dailyRate * (swingDays -1) * (1 - taxRate/100);
+
+        const hhmm = formatMinutesToHHMM(workedMinutes);
+        const lunchStartStrFmt = lunchStart.toTimeString().slice(0,5);
+        const lunchEndStrFmt = lunchEnd.toTimeString().slice(0,5);
+
+        document.getElementById("output").innerHTML = `
+          <p><strong>You already made 💸</strong></p>
+          <p style="font-size: 2rem;">$${net.toFixed(2)}</p>
+          <p class="small-text">Time worked: ${hhmm} hs.</p>
+          <p class="small-text">Lunch break: ${lunchStartStrFmt} - ${lunchEndStrFmt}</p>
+          <p class="small-text"><strong>Swing earnings:</strong> $${totalSwingEarnings.toFixed(2)}</p>
+        `;
+      }, 1000);
+    }
+  </script>
+
+</body>
+</html>
