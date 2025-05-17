@@ -3,137 +3,175 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Daily Earnings Calculator</title>
+  <title>Earnings calculator</title>
+
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Earnings calculator" />
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/846/846449.png" />
+
   <style>
     body {
       font-family: sans-serif;
       margin: 1rem;
       background-color: #121212;
       color: #f1f1f1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      max-width: 480px;
+      margin-left: auto;
+      margin-right: auto;
     }
-    .container {
+    h2 {
+      text-align: center;
+      margin-bottom: 0.5rem;
+    }
+    form {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
-    }
-    .field {
-      flex: 1 1 calc(50% - 10px);
+      gap: 12px;
+      margin-bottom: 1rem;
     }
     label {
-      font-size: 0.9rem;
-      margin-bottom: 5px;
-      display: block;
+      flex: 1 1 45%;
+      font-size: 1rem;
+      display: flex;
+      flex-direction: column;
     }
-    input[type="number"], input[type="date"] {
-      width: 80px;
-    }
-    input[type="time"] {
-      width: 100%;
-    }
-    input {
-      padding: 6px;
+    input[type="number"], input[type="time"], input[type="date"] {
+      padding: 6px 8px;
+      margin-top: 4px;
       background-color: #1e1e1e;
       color: #f1f1f1;
       border: 1px solid #333;
       border-radius: 5px;
-      font-size: 0.9rem;
+      font-size: 1rem;
+    }
+    input[type="number"] {
+      max-width: 5ch;
+    }
+    #samCounter {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-basis: 100%;
+      font-size: 1rem;
+    }
+    #samCounter label {
+      flex: none;
+      cursor: pointer;
+      user-select: none;
+    }
+    #samCounter input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
     }
     button {
       width: 100%;
-      padding: 10px;
-      margin-top: 15px;
+      padding: 10px 0;
       background-color: #00c853;
       color: white;
       border: none;
       border-radius: 5px;
-      font-size: 1rem;
+      font-size: 1.1rem;
       cursor: pointer;
+      margin-top: 5px;
     }
     button:hover {
       background-color: #00b248;
     }
     .result {
       margin-top: 1rem;
-      font-size: 1.2rem;
-      background-color: rgba(0, 0, 0, 0.5);
+      background-color: rgba(0, 0, 0, 0.6);
       padding: 1rem;
       border-radius: 10px;
-      line-height: 1.5;
-      max-height: 300px;
-      overflow-y: auto;
+      line-height: 1.4;
+      font-size: 1.1rem;
+      min-height: 130px;
     }
     .small-text {
-      font-size: 0.8rem;
+      font-size: 0.9rem;
       color: #aaa;
+      margin-top: 4px;
     }
-    .sams {
-      margin-top: 1rem;
-    }
-    .sams-row {
-      display: flex;
-      gap: 10px;
-      margin-top: 5px;
-    }
-    footer {
-      margin-top: 1rem;
-      font-size: 0.75rem;
+    .footer {
+      font-size: 0.8rem;
+      color: #666;
       font-style: italic;
       text-align: center;
-      color: #777;
+      margin-top: 1.5rem;
+      user-select: none;
+    }
+    @media (max-width: 400px) {
+      label {
+        flex: 1 1 100%;
+      }
     }
   </style>
 </head>
 <body>
+
   <h2>Daily Earnings Calculator</h2>
 
-  <div class="container">
-    <div class="field">
-      <label>Daily earnings ($)</label>
-      <input type="number" id="dailyRate" maxlength="5" />
-    </div>
-    <div class="field">
-      <label>Tax rate (%)</label>
-      <input type="number" id="taxRate" maxlength="5" />
-    </div>
-    <div class="field">
-      <label>Work start time</label>
-      <input type="time" id="startTime" />
-    </div>
-    <div class="field">
-      <label>Work end time</label>
-      <input type="time" id="endTime" />
-    </div>
-    <div class="field">
-      <label>Lunch break start (1 hour)</label>
-      <input type="time" id="lunchStart" />
-    </div>
-    <div class="field">
-      <label>Swing start date</label>
-      <input type="date" id="swingStartDate" />
-    </div>
-  </div>
+  <form id="dataForm" onsubmit="event.preventDefault(); startTracking();">
+    <label>Daily earnings ($):
+      <input type="number" id="dailyRate" placeholder="E.g.: 400" min="0" max="9999" />
+    </label>
 
-  <button onclick="startTracking()">Start Tracking</button>
+    <label>Tax rate (%):
+      <input type="number" id="taxRate" placeholder="E.g.: 30" min="0" max="100" />
+    </label>
+
+    <label>Work start time:
+      <input type="time" id="startTime" />
+    </label>
+
+    <label>Work end time:
+      <input type="time" id="endTime" />
+    </label>
+
+    <label>Lunch break start (1 hour):
+      <input type="time" id="lunchStart" />
+    </label>
+
+    <label>First day of swing (optional):
+      <input type="date" id="swingStartDate" max="" />
+    </label>
+
+    <div id="samCounter">
+      <span>SAMs completed:</span>
+      <label><input type="checkbox" id="sam1" /> 1</label>
+      <label><input type="checkbox" id="sam2" /> 2</label>
+      <label><input type="checkbox" id="sam3" /> 3</label>
+    </div>
+
+    <button type="submit">Start Tracking</button>
+  </form>
 
   <div class="result" id="output">
     Please enter your data and press "Start Tracking".
   </div>
 
-  <div class="sams">
-    <label>SAMs completed</label>
-    <div class="sams-row">
-      <label><input type="checkbox" class="sam" id="sam1" /> 1</label>
-      <label><input type="checkbox" class="sam" id="sam2" /> 2</label>
-      <label><input type="checkbox" class="sam" id="sam3" /> 3</label>
-    </div>
-  </div>
-
-  <footer>By: Ariel M.</footer>
+  <div class="footer">By: Ariel M.</div>
 
   <script>
-    const inputs = document.querySelectorAll("input[type='number'], input[type='time'], input[type='date']");
-    const samCheckboxes = document.querySelectorAll(".sam");
+    const inputs = document.querySelectorAll("input");
     const output = document.getElementById("output");
+    const swingDateInput = document.getElementById("swingStartDate");
+
+    // Set max date for swingStartDate to today
+    function setMaxSwingDate() {
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, "0");
+      const dd = String(today.getDate()).padStart(2, "0");
+      swingDateInput.max = `${yyyy}-${mm}-${dd}`;
+    }
+
+    setMaxSwingDate();
 
     function loadDefaults() {
       if (!localStorage.getItem("dailyRate")) localStorage.setItem("dailyRate", "");
@@ -141,59 +179,17 @@
       if (!localStorage.getItem("startTime")) localStorage.setItem("startTime", "06:00");
       if (!localStorage.getItem("endTime")) localStorage.setItem("endTime", "18:00");
       if (!localStorage.getItem("lunchStart")) localStorage.setItem("lunchStart", "13:00");
-      if (!localStorage.getItem("swingStartDate")) {
-        const todayStr = new Date().toISOString().slice(0, 10);
-        localStorage.setItem("swingStartDate", todayStr);
-      }
+      if (!localStorage.getItem("swingStartDate")) localStorage.setItem("swingStartDate", "");
 
       inputs.forEach(input => {
         const saved = localStorage.getItem(input.id);
-        if (saved !== null) input.value = saved;
+        if (saved !== null && saved !== "") input.value = saved;
         input.addEventListener("input", () => {
           localStorage.setItem(input.id, input.value);
         });
       });
-
-      // Load SAM states and handle reset logic
-      const samResetTime = localStorage.getItem("samResetTime");
-      const now = Date.now();
-      if (!samResetTime || now > parseInt(samResetTime)) {
-        samCheckboxes.forEach(cb => {
-          cb.checked = false;
-          localStorage.removeItem(cb.id);
-        });
-        localStorage.removeItem("samResetTime");
-      } else {
-        samCheckboxes.forEach(cb => {
-          const val = localStorage.getItem(cb.id);
-          cb.checked = val === "true";
-        });
-      }
     }
     loadDefaults();
-
-    samCheckboxes.forEach(cb => {
-      cb.addEventListener("change", () => {
-        const checkedCount = [...samCheckboxes].filter(c => c.checked).length;
-        if (checkedCount > 3) {
-          cb.checked = false;
-          return;
-        }
-        localStorage.setItem(cb.id, cb.checked);
-        setSamResetTimer();
-      });
-    });
-
-    function setSamResetTimer() {
-      const endTimeStr = localStorage.getItem("endTime") || "18:00";
-      const [h, m] = endTimeStr.split(":").map(Number);
-      let resetTime = new Date();
-      resetTime.setHours(h + 6, m, 0, 0); // 6 hrs after endTime today
-      if (resetTime < new Date()) {
-        resetTime.setDate(resetTime.getDate() + 1);
-      }
-      localStorage.setItem("samResetTime", resetTime.getTime());
-    }
 
     let intervalId;
 
@@ -204,34 +200,44 @@
       return d;
     }
 
+    function diffMinutes(date1, date2) {
+      return (date2 - date1) / 60000;
+    }
+
     function formatMinutesToHHMM(minutes) {
       const h = Math.floor(minutes / 60);
       const m = Math.floor(minutes % 60);
       return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
     }
 
-    // Calcula diferencia en minutos entre dos fechas
-    function diffMinutes(date1, date2) {
-      return (date2 - date1) / 60000;
-    }
+    // SAMs checkbox logic + localStorage + reset 6h after shift end
+    function setupSAMCounter(startStr, endStr) {
+      const samIds = ["sam1", "sam2", "sam3"];
+      const now = new Date();
 
-    // Guarda la ganancia neta de un día al localStorage (por fecha)
-    function saveDailyNet(dateStr, net) {
-      let data = JSON.parse(localStorage.getItem("dailyNetData") || "{}");
-      data[dateStr] = net;
-      localStorage.setItem("dailyNetData", JSON.stringify(data));
-    }
+      // Calculate reset time = end of shift + 6 hours
+      let baseDate = new Date();
+      baseDate.setHours(0,0,0,0);
+      let shiftEnd = parseTimeToDate(baseDate, endStr);
+      // If end <= start, shiftEnd +1 day
+      const startTime = parseTimeToDate(baseDate, startStr);
+      if(shiftEnd <= startTime) shiftEnd.setDate(shiftEnd.getDate() +1);
+      const resetTime = new Date(shiftEnd.getTime() + 6 * 3600000);
 
-    // Obtiene el total acumulado desde inicio de swing hasta ayer
-    function getAccumulatedNet(swingStart, todayStr) {
-      let data = JSON.parse(localStorage.getItem("dailyNetData") || "{}");
-      let acc = 0;
-      for (let d in data) {
-        if (d >= swingStart && d < todayStr) {
-          acc += data[d];
-        }
+      // Check if reset time passed; if yes, clear SAMs
+      const samResetTimestamp = localStorage.getItem("samResetTimestamp");
+      if(!samResetTimestamp || now > new Date(samResetTimestamp)) {
+        samIds.forEach(id => localStorage.removeItem(id));
+        localStorage.setItem("samResetTimestamp", resetTime.toISOString());
       }
-      return acc;
+
+      samIds.forEach(id => {
+        const cb = document.getElementById(id);
+        cb.checked = localStorage.getItem(id) === "true";
+        cb.addEventListener("change", () => {
+          localStorage.setItem(id, cb.checked);
+        });
+      });
     }
 
     function startTracking() {
@@ -242,11 +248,20 @@
       const startTimeStr = document.getElementById("startTime").value;
       const endTimeStr = document.getElementById("endTime").value;
       let lunchStartStr = document.getElementById("lunchStart").value;
-      const swingStartDateStr = document.getElementById("swingStartDate").value;
+      let swingStartDateStr = document.getElementById("swingStartDate").value;
 
-      if (isNaN(dailyRate) || isNaN(taxRate) || !startTimeStr || !endTimeStr || !lunchStartStr || !swingStartDateStr) {
-        output.innerText = "Please fill all fields correctly.";
+      if (isNaN(dailyRate) || isNaN(taxRate) || !startTimeStr || !endTimeStr || !lunchStartStr) {
+        output.innerText = "Please fill all required fields correctly.";
         return;
+      }
+
+      // If swing start date empty, use today
+      if (!swingStartDateStr) {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, "0");
+        const dd = String(today.getDate()).padStart(2, "0");
+        swingStartDateStr = `${yyyy}-${mm}-${dd}`;
       }
 
       const baseDate = new Date();
@@ -254,15 +269,22 @@
 
       let start = parseTimeToDate(baseDate, startTimeStr);
       let end = parseTimeToDate(baseDate, endTimeStr);
+
       if (end <= start) {
         end.setDate(end.getDate() + 1);
       }
 
       let lunchStart = parseTimeToDate(baseDate, lunchStartStr);
+
+      // If lunch is outside shift, place it in the middle of the shift
       if (lunchStart < start || lunchStart > end) {
         lunchStart = new Date(start.getTime() + (end - start) / 2 - 30 * 60000);
       }
+
+      // Lunch ends 1 hour after lunchStart
       let lunchEnd = new Date(lunchStart.getTime() + 60 * 60000);
+
+      // If lunch end is after shift end, adjust lunchStart to fit lunch in shift
       if (lunchEnd > end) {
         lunchStart = new Date(end.getTime() - 60 * 60000);
         lunchEnd = new Date(end.getTime());
@@ -271,18 +293,12 @@
       const totalWorkMinutes = (end - start - (lunchEnd - lunchStart)) / 60000;
       const ratePerMinute = dailyRate / totalWorkMinutes;
 
+      setupSAMCounter(startTimeStr, endTimeStr);
+
       intervalId = setInterval(() => {
         const now = new Date();
 
-        // Fecha actual en formato YYYY-MM-DD
-        const todayStr = now.toISOString().slice(0, 10);
-
-        // Guardar neta del día anterior si pasamos de día
-        let yesterday = new Date(now);
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = yesterday.toISOString().slice(0, 10);
-
-        // Calculamos minutos trabajados hoy hasta ahora
+        // Calculate minutes worked today so far
         let workedMinutes;
         if (now < start) {
           workedMinutes = 0;
@@ -301,42 +317,27 @@
 
         const netToday = workedMinutes * ratePerMinute * (1 - taxRate / 100);
 
-        // Guardamos el neto del día anterior si no está guardado o si es 0 para actualizar
-        let data = JSON.parse(localStorage.getItem("dailyNetData") || "{}");
-        if (!(yesterdayStr in data) && yesterdayStr >= swingStartDateStr) {
-          // Guardamos neto completo del día anterior (100% si ya terminó)
-          let netYesterday;
-          if (now >= end) {
-            netYesterday = dailyRate * (1 - taxRate / 100);
-          } else {
-            // Si no terminó el día anterior, se ignora (podría estar offline)
-            netYesterday = 0;
-          }
-          if (netYesterday > 0) {
-            data[yesterdayStr] = netYesterday;
-            localStorage.setItem("dailyNetData", JSON.stringify(data));
-          }
-        }
+        // Calculate swing earnings:
+        // swing earnings = (net daily full * days completed before today) + net partial today
 
-        // Acumulado hasta ayer (sin contar hoy)
-        const accNet = getAccumulatedNet(swingStartDateStr, todayStr);
+        const swingStartDate = new Date(swingStartDateStr);
+        swingStartDate.setHours(0, 0, 0, 0);
 
-        // Total swing net = acumulado + hoy
-        const totalSwingNet = accNet + netToday;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
 
-        const hhmm = formatMinutesToHHMM(workedMinutes);
-        const lunchStartStrFmt = lunchStart.toTimeString().slice(0,5);
-        const lunchEndStrFmt = lunchEnd.toTimeString().slice(0,5);
+        const diffTime = today - swingStartDate;
+        let totalDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1; // includes start day
+
+        // days completed before today
+        const fullDaysBeforeToday = totalDays > 1 ? totalDays - 1 : 0;
+
+        const netDailyFull = totalWorkMinutes * ratePerMinute * (1 - taxRate / 100);
+
+        const swingEarnings = netDailyFull * fullDaysBeforeToday + netToday;
 
         output.innerHTML = `
           <p><strong>You already made 💸</strong></p>
           <p style="font-size: 2rem;">$${netToday.toFixed(2)}</p>
-          <p class="small-text">Time worked: ${hhmm} hs.</p>
-          <p class="small-text">Lunch break: ${lunchStartStrFmt} - ${lunchEndStrFmt}</p>
-          <p class="small-text"><strong>Swing Earnings:</strong> $${totalSwingNet.toFixed(2)}</p>
-        `;
-      }, 1000);
-    }
-  </script>
-</body>
-</html>
+          <p class="small-text">Time worked: ${formatMinutesToHHMM(workedMinutes)} hs.</p>
+          <p class="small-text">Lunch break: ${lunchStart.toTimeString().slice(0,5)} - ${lunch
