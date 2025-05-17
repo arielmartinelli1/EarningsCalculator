@@ -24,8 +24,13 @@
       margin-bottom: 5px;
       display: block;
     }
-    input {
+    input[type="number"], input[type="date"] {
+      width: 80px;
+    }
+    input[type="time"] {
       width: 100%;
+    }
+    input {
       padding: 6px;
       background-color: #1e1e1e;
       color: #f1f1f1;
@@ -54,6 +59,8 @@
       padding: 1rem;
       border-radius: 10px;
       line-height: 1.5;
+      max-height: 300px;
+      overflow-y: auto;
     }
     .small-text {
       font-size: 0.8rem;
@@ -62,8 +69,10 @@
     .sams {
       margin-top: 1rem;
     }
-    .sams label {
-      margin-right: 10px;
+    .sams-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 5px;
     }
     footer {
       margin-top: 1rem;
@@ -80,11 +89,11 @@
   <div class="container">
     <div class="field">
       <label>Daily earnings ($)</label>
-      <input type="number" id="dailyRate" maxlength="4" />
+      <input type="number" id="dailyRate" maxlength="5" />
     </div>
     <div class="field">
       <label>Tax rate (%)</label>
-      <input type="number" id="taxRate" maxlength="4" />
+      <input type="number" id="taxRate" maxlength="5" />
     </div>
     <div class="field">
       <label>Work start time</label>
@@ -95,38 +104,47 @@
       <input type="time" id="endTime" />
     </div>
     <div class="field">
-      <label>Lunch break start (1h)</label>
+      <label>Lunch break start (1 hour)</label>
       <input type="time" id="lunchStart" />
     </div>
     <div class="field">
-      <label>First day of swing</label>
-      <input type="date" id="swingStart" />
+      <label>Swing start date</label>
+      <input type="date" id="swingStartDate" />
     </div>
   </div>
 
   <button onclick="startTracking()">Start Tracking</button>
 
-  <div class="sams" id="sam-counter">
-    <label><strong>SAMs completed:</strong></label><br />
-    <label><input type="checkbox" id="sam1"> 1</label>
-    <label><input type="checkbox" id="sam2"> 2</label>
-    <label><input type="checkbox" id="sam3"> 3</label>
-  </div>
-
   <div class="result" id="output">
     Please enter your data and press "Start Tracking".
+  </div>
+
+  <div class="sams">
+    <label>SAMs completed</label>
+    <div class="sams-row">
+      <label><input type="checkbox" class="sam" id="sam1" /> 1</label>
+      <label><input type="checkbox" class="sam" id="sam2" /> 2</label>
+      <label><input type="checkbox" class="sam" id="sam3" /> 3</label>
+    </div>
   </div>
 
   <footer>By: Ariel M.</footer>
 
   <script>
-    const inputs = document.querySelectorAll("input");
+    const inputs = document.querySelectorAll("input[type='number'], input[type='time'], input[type='date']");
+    const samCheckboxes = document.querySelectorAll(".sam");
+    const output = document.getElementById("output");
+
     function loadDefaults() {
       if (!localStorage.getItem("dailyRate")) localStorage.setItem("dailyRate", "");
       if (!localStorage.getItem("taxRate")) localStorage.setItem("taxRate", "");
       if (!localStorage.getItem("startTime")) localStorage.setItem("startTime", "06:00");
       if (!localStorage.getItem("endTime")) localStorage.setItem("endTime", "18:00");
       if (!localStorage.getItem("lunchStart")) localStorage.setItem("lunchStart", "13:00");
+      if (!localStorage.getItem("swingStartDate")) {
+        const todayStr = new Date().toISOString().slice(0, 10);
+        localStorage.setItem("swingStartDate", todayStr);
+      }
 
       inputs.forEach(input => {
         const saved = localStorage.getItem(input.id);
@@ -135,9 +153,49 @@
           localStorage.setItem(input.id, input.value);
         });
       });
+
+      // Load SAM states and handle reset logic
+      const samResetTime = localStorage.getItem("samResetTime");
+      const now = Date.now();
+      if (!samResetTime || now > parseInt(samResetTime)) {
+        samCheckboxes.forEach(cb => {
+          cb.checked = false;
+          localStorage.removeItem(cb.id);
+        });
+        localStorage.removeItem("samResetTime");
+      } else {
+        samCheckboxes.forEach(cb => {
+          const val = localStorage.getItem(cb.id);
+          cb.checked = val === "true";
+        });
+      }
     }
     loadDefaults();
-    setupSAMCounter();
+
+    samCheckboxes.forEach(cb => {
+      cb.addEventListener("change", () => {
+        const checkedCount = [...samCheckboxes].filter(c => c.checked).length;
+        if (checkedCount > 3) {
+          cb.checked = false;
+          return;
+        }
+        localStorage.setItem(cb.id, cb.checked);
+        setSamResetTimer();
+      });
+    });
+
+    function setSamResetTimer() {
+      const endTimeStr = localStorage.getItem("endTime") || "18:00";
+      const [h, m] = endTimeStr.split(":").map(Number);
+      let resetTime = new Date();
+      resetTime.setHours(h + 6, m, 0, 0); // 6 hrs after endTime today
+      if (resetTime < new Date()) {
+        resetTime.setDate(resetTime.getDate() + 1);
+      }
+      localStorage.setItem("samResetTime", resetTime.getTime());
+    }
+
+    let intervalId;
 
     function parseTimeToDate(baseDate, timeStr) {
       const [h, m] = timeStr.split(":").map(Number);
@@ -152,7 +210,30 @@
       return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
     }
 
-    let intervalId;
+    // Calcula diferencia en minutos entre dos fechas
+    function diffMinutes(date1, date2) {
+      return (date2 - date1) / 60000;
+    }
+
+    // Guarda la ganancia neta de un día al localStorage (por fecha)
+    function saveDailyNet(dateStr, net) {
+      let data = JSON.parse(localStorage.getItem("dailyNetData") || "{}");
+      data[dateStr] = net;
+      localStorage.setItem("dailyNetData", JSON.stringify(data));
+    }
+
+    // Obtiene el total acumulado desde inicio de swing hasta ayer
+    function getAccumulatedNet(swingStart, todayStr) {
+      let data = JSON.parse(localStorage.getItem("dailyNetData") || "{}");
+      let acc = 0;
+      for (let d in data) {
+        if (d >= swingStart && d < todayStr) {
+          acc += data[d];
+        }
+      }
+      return acc;
+    }
+
     function startTracking() {
       clearInterval(intervalId);
 
@@ -161,10 +242,10 @@
       const startTimeStr = document.getElementById("startTime").value;
       const endTimeStr = document.getElementById("endTime").value;
       let lunchStartStr = document.getElementById("lunchStart").value;
-      const swingStartStr = document.getElementById("swingStart").value;
+      const swingStartDateStr = document.getElementById("swingStartDate").value;
 
-      if (isNaN(dailyRate) || isNaN(taxRate) || !startTimeStr || !endTimeStr || !lunchStartStr) {
-        document.getElementById("output").innerText = "Please fill all fields correctly.";
+      if (isNaN(dailyRate) || isNaN(taxRate) || !startTimeStr || !endTimeStr || !lunchStartStr || !swingStartDateStr) {
+        output.innerText = "Please fill all fields correctly.";
         return;
       }
 
@@ -173,90 +254,88 @@
 
       let start = parseTimeToDate(baseDate, startTimeStr);
       let end = parseTimeToDate(baseDate, endTimeStr);
-
-      if (end <= start) end.setDate(end.getDate() + 1);
+      if (end <= start) {
+        end.setDate(end.getDate() + 1);
+      }
 
       let lunchStart = parseTimeToDate(baseDate, lunchStartStr);
-      let lunchEnd = new Date(lunchStart.getTime() + 60 * 60000);
-
-      if (lunchStart < start || lunchEnd > end) {
+      if (lunchStart < start || lunchStart > end) {
         lunchStart = new Date(start.getTime() + (end - start) / 2 - 30 * 60000);
-        lunchEnd = new Date(lunchStart.getTime() + 60 * 60000);
+      }
+      let lunchEnd = new Date(lunchStart.getTime() + 60 * 60000);
+      if (lunchEnd > end) {
+        lunchStart = new Date(end.getTime() - 60 * 60000);
+        lunchEnd = new Date(end.getTime());
       }
 
       const totalWorkMinutes = (end - start - (lunchEnd - lunchStart)) / 60000;
-
-      // Save SAM end time
-      const samData = JSON.parse(localStorage.getItem('samData')) || {};
-      samData.endTime = end.toISOString();
-      localStorage.setItem('samData', JSON.stringify(samData));
+      const ratePerMinute = dailyRate / totalWorkMinutes;
 
       intervalId = setInterval(() => {
         const now = new Date();
 
-        let workedMinutes = 0;
-        if (now >= start) {
-          workedMinutes = (now > end ? totalWorkMinutes : (now - start) / 60000);
+        // Fecha actual en formato YYYY-MM-DD
+        const todayStr = now.toISOString().slice(0, 10);
+
+        // Guardar neta del día anterior si pasamos de día
+        let yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().slice(0, 10);
+
+        // Calculamos minutos trabajados hoy hasta ahora
+        let workedMinutes;
+        if (now < start) {
+          workedMinutes = 0;
+        } else if (now > end) {
+          workedMinutes = totalWorkMinutes;
+        } else {
+          let elapsed = diffMinutes(start, now);
+
           if (now >= lunchStart && now <= lunchEnd) {
-            workedMinutes -= (now - lunchStart) / 60000;
+            elapsed -= diffMinutes(lunchStart, now);
           } else if (now > lunchEnd) {
-            workedMinutes -= (lunchEnd - lunchStart) / 60000;
+            elapsed -= diffMinutes(lunchStart, lunchEnd);
+          }
+          workedMinutes = Math.max(0, elapsed);
+        }
+
+        const netToday = workedMinutes * ratePerMinute * (1 - taxRate / 100);
+
+        // Guardamos el neto del día anterior si no está guardado o si es 0 para actualizar
+        let data = JSON.parse(localStorage.getItem("dailyNetData") || "{}");
+        if (!(yesterdayStr in data) && yesterdayStr >= swingStartDateStr) {
+          // Guardamos neto completo del día anterior (100% si ya terminó)
+          let netYesterday;
+          if (now >= end) {
+            netYesterday = dailyRate * (1 - taxRate / 100);
+          } else {
+            // Si no terminó el día anterior, se ignora (podría estar offline)
+            netYesterday = 0;
+          }
+          if (netYesterday > 0) {
+            data[yesterdayStr] = netYesterday;
+            localStorage.setItem("dailyNetData", JSON.stringify(data));
           }
         }
 
-        const ratePerMinute = dailyRate / totalWorkMinutes;
-        const net = workedMinutes * ratePerMinute * (1 - taxRate / 100);
+        // Acumulado hasta ayer (sin contar hoy)
+        const accNet = getAccumulatedNet(swingStartDateStr, todayStr);
 
-        let swingEarnings = '';
-        if (swingStartStr) {
-          const swingStart = new Date(swingStartStr + 'T00:00:00');
-          const today = new Date();
-          const daysWorked = Math.floor((today - swingStart) / (1000 * 60 * 60 * 24));
-          const total = (daysWorked * dailyRate + net) * (1 - taxRate / 100);
-          swingEarnings = `<p class="small-text">Swing earnings: $${total.toFixed(2)}</p>`;
-        }
+        // Total swing net = acumulado + hoy
+        const totalSwingNet = accNet + netToday;
 
+        const hhmm = formatMinutesToHHMM(workedMinutes);
         const lunchStartStrFmt = lunchStart.toTimeString().slice(0,5);
         const lunchEndStrFmt = lunchEnd.toTimeString().slice(0,5);
 
-        document.getElementById("output").innerHTML = `
+        output.innerHTML = `
           <p><strong>You already made 💸</strong></p>
-          <p style="font-size: 2rem;">$${net.toFixed(2)}</p>
-          <p class="small-text">Time worked: ${formatMinutesToHHMM(workedMinutes)} hs.</p>
+          <p style="font-size: 2rem;">$${netToday.toFixed(2)}</p>
+          <p class="small-text">Time worked: ${hhmm} hs.</p>
           <p class="small-text">Lunch break: ${lunchStartStrFmt} - ${lunchEndStrFmt}</p>
-          ${swingEarnings}
+          <p class="small-text"><strong>Swing Earnings:</strong> $${totalSwingNet.toFixed(2)}</p>
         `;
       }, 1000);
-    }
-
-    function setupSAMCounter() {
-      const samCheckboxes = ['sam1', 'sam2', 'sam3'];
-      const storageKey = 'samData';
-      const saved = JSON.parse(localStorage.getItem(storageKey)) || {};
-      const now = new Date();
-
-      const resetThreshold = saved.endTime ? new Date(saved.endTime).getTime() + 6 * 60 * 60 * 1000 : null;
-      if (resetThreshold && now.getTime() > resetThreshold) {
-        localStorage.removeItem(storageKey);
-        samCheckboxes.forEach(id => {
-          document.getElementById(id).checked = false;
-        });
-        return;
-      }
-
-      samCheckboxes.forEach(id => {
-        const checkbox = document.getElementById(id);
-        if (saved[id]) checkbox.checked = true;
-        checkbox.addEventListener('change', () => {
-          const updated = {
-            sam1: document.getElementById('sam1').checked,
-            sam2: document.getElementById('sam2').checked,
-            sam3: document.getElementById('sam3').checked,
-            endTime: saved.endTime
-          };
-          localStorage.setItem(storageKey, JSON.stringify(updated));
-        });
-      });
     }
   </script>
 </body>
