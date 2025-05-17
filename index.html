@@ -281,6 +281,15 @@
           <p class="small-text">Time worked: ${hhmm} hs.</p>
           <p class="small-text">Lunch break: ${lunchStartStrFmt} - ${lunchEndStrFmt}</p>
           <p class="small-text"><strong>Swing earnings:</strong> $${totalSwingEarnings.toFixed(2)}</p>
+          <div id="sam-counter" style="margin-top: 1.5rem;">
+  <label><strong>SAMs completed:</strong></label>
+  <div style="display: flex; gap: 10px;">
+    <label><input type="checkbox" id="sam1"> 1</label>
+    <label><input type="checkbox" id="sam2"> 2</label>
+    <label><input type="checkbox" id="sam3"> 3</label>
+  </div>
+</div>
+
         `;
       }, 1000);
     }
