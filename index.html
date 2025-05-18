@@ -177,8 +177,6 @@
       firstDayInput.max = todayISO;
     }
     loadDefaults();
-    setupSAMCounter();
-
 
     let intervalId;
 
@@ -242,11 +240,6 @@
       today.setHours(0,0,0,0);
       if (firstDaySwing > today) firstDaySwing = today;
 
-      // Save end time for SAM reset logic
-      const samData = JSON.parse(localStorage.getItem('samData')) || {};
-      samData.endTime = end.toISOString();
-      localStorage.setItem('samData', JSON.stringify(samData));
-
       function calculateSwingDays() {
         const diffMs = today - firstDaySwing;
         const diffDays = Math.floor(diffMs / (1000*60*60*24)) + 1;
@@ -291,37 +284,6 @@
         `;
       }, 1000);
     }
-    function setupSAMCounter() {
-  const samCheckboxes = ['sam1', 'sam2', 'sam3'];
-  const storageKey = 'samData';
-  const saved = JSON.parse(localStorage.getItem(storageKey)) || {};
-  const now = new Date();
-
-  // Reset if more than 6 hours after saved endTime
-  const resetThreshold = saved.endTime ? new Date(saved.endTime).getTime() + 6 * 60 * 60 * 1000 : null;
-  if (resetThreshold && now.getTime() > resetThreshold) {
-    localStorage.removeItem(storageKey);
-    samCheckboxes.forEach(id => {
-      document.getElementById(id).checked = false;
-    });
-    return;
-  }
-
-  // Load saved checkboxes
-  samCheckboxes.forEach(id => {
-    const checkbox = document.getElementById(id);
-    if (saved[id]) checkbox.checked = true;
-    checkbox.addEventListener('change', () => {
-      const updated = {
-        sam1: document.getElementById('sam1').checked,
-        sam2: document.getElementById('sam2').checked,
-        sam3: document.getElementById('sam3').checked,
-        endTime: saved.endTime // preserve endTime
-      };
-      localStorage.setItem(storageKey, JSON.stringify(updated));
-    });
-  });
-}
 
   </script>
   
