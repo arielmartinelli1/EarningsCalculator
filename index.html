@@ -272,71 +272,51 @@
       const ratePerMinute = dailyRate / totalWorkMinutes;
 
       intervalId = setInterval(() => {
-        const now = new Date();
+  const now = new Date();
 
-        // Fecha actual en formato YYYY-MM-DD
-        const todayStr = now.toISOString().slice(0, 10);
+  // Calcular minutos trabajados hoy hasta ahora
+  let workedMinutes;
+  if (now < start) {
+    workedMinutes = 0;
+  } else if (now > end) {
+    workedMinutes = totalWorkMinutes;
+  } else {
+    let elapsed = diffMinutes(start, now);
 
-        // Guardar neta del día anterior si pasamos de día
-        let yesterday = new Date(now);
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = yesterday.toISOString().slice(0, 10);
-
-        // Calculamos minutos trabajados hoy hasta ahora
-        let workedMinutes;
-        if (now < start) {
-          workedMinutes = 0;
-        } else if (now > end) {
-          workedMinutes = totalWorkMinutes;
-        } else {
-          let elapsed = diffMinutes(start, now);
-
-          if (now >= lunchStart && now <= lunchEnd) {
-            elapsed -= diffMinutes(lunchStart, now);
-          } else if (now > lunchEnd) {
-            elapsed -= diffMinutes(lunchStart, lunchEnd);
-          }
-          workedMinutes = Math.max(0, elapsed);
-        }
-
-        const netToday = workedMinutes * ratePerMinute * (1 - taxRate / 100);
-
-        // Guardamos el neto del día anterior si no está guardado o si es 0 para actualizar
-        let data = JSON.parse(localStorage.getItem("dailyNetData") || "{}");
-        if (!(yesterdayStr in data) && yesterdayStr >= swingStartDateStr) {
-          // Guardamos neto completo del día anterior (100% si ya terminó)
-          let netYesterday;
-          if (now >= end) {
-            netYesterday = dailyRate * (1 - taxRate / 100);
-          } else {
-            // Si no terminó el día anterior, se ignora (podría estar offline)
-            netYesterday = 0;
-          }
-          if (netYesterday > 0) {
-            data[yesterdayStr] = netYesterday;
-            localStorage.setItem("dailyNetData", JSON.stringify(data));
-          }
-        }
-
-        // Acumulado hasta ayer (sin contar hoy)
-        const accNet = getAccumulatedNet(swingStartDateStr, todayStr);
-
-        // Total swing net = acumulado + hoy
-        const totalSwingNet = accNet + netToday;
-
-        const hhmm = formatMinutesToHHMM(workedMinutes);
-        const lunchStartStrFmt = lunchStart.toTimeString().slice(0,5);
-        const lunchEndStrFmt = lunchEnd.toTimeString().slice(0,5);
-
-        output.innerHTML = `
-          <p><strong>You already made 💸</strong></p>
-          <p style="font-size: 2rem;">$${netToday.toFixed(2)}</p>
-          <p class="small-text">Time worked: ${hhmm} hs.</p>
-          <p class="small-text">Lunch break: ${lunchStartStrFmt} - ${lunchEndStrFmt}</p>
-          <p class="small-text"><strong>Swing Earnings:</strong> $${totalSwingNet.toFixed(2)}</p>
-        `;
-      }, 1000);
+    if (now >= lunchStart && now <= lunchEnd) {
+      elapsed -= diffMinutes(lunchStart, now);
+    } else if (now > lunchEnd) {
+      elapsed -= diffMinutes(lunchStart, lunchEnd);
     }
-  </script>
-</body>
-</html>
+    workedMinutes = Math.max(0, elapsed);
+  }
+
+  const netToday = workedMinutes * ratePerMinute * (1 - taxRate / 100);
+
+  // Calcular días completos previos a hoy desde inicio swing
+  const swingStartDate = new Date(swingStartDateStr);
+  swingStartDate.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Diferencia en días (sin incluir hoy)
+  let diffTime = today - swingStartDate;
+  let totalDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1; // incluye día inicio
+
+  // Días completos previos (excluye hoy)
+  const fullDaysBeforeToday = totalDays > 1 ? totalDays - 1 : 0;
+
+  // Neto diario completo (asumiendo jornada completa)
+  const netDailyFull = totalWorkMinutes * ratePerMinute * (1 - taxRate / 100);
+
+  const swingEarnings = netDailyFull * fullDaysBeforeToday + netToday;
+
+  // Mostrar resultados
+  output.innerHTML = `
+    <p><strong>You already made 💸</strong></p>
+    <p style="font-size: 2rem;">$${netToday.toFixed(2)}</p>
+    <p class="small-text">Time worked: ${formatMinutesToHHMM(workedMinutes)} hs.</p>
+    <p class="small-text">Lunch break: ${lunchStart.toTimeString().slice(0,5)} - ${lunchEnd.toTimeString().slice(0,5)}</p>
+    <p class="small-text"><strong>Swing Earnings:</strong> $${swingEarnings.toFixed(2)}</p>
+  `;
+}, 1000);
